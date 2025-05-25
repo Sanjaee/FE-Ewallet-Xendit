@@ -1,6 +1,33 @@
-import "@/styles/globals.css";
-import type { AppProps } from "next/app";
+// pages/_app.tsx
+import { useState, useEffect } from 'react';
+import { ThemeProvider } from 'next-themes';
+import { Toaster } from '@/components/ui/toaster';
+import { useRouter } from 'next/router';
+import { getAuthToken } from '@/utils/auth';
+import { AppProps } from 'next/app';
+import '../styles/globals.css';
 
-export default function App({ Component, pageProps }: AppProps) {
-  return <Component {...pageProps} />;
+interface MyAppProps extends AppProps {
+  Component: React.ComponentType<{
+    isAuthenticated?: boolean;
+  }> & { auth?: boolean };
 }
+
+function MyApp({ Component, pageProps }: MyAppProps) {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    const token = getAuthToken();
+    setIsAuthenticated(!!token);
+  }, []);
+
+  return (
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+      <Component {...pageProps} isAuthenticated={isAuthenticated} />
+      <Toaster />
+    </ThemeProvider>
+  );
+}
+
+export default MyApp;
