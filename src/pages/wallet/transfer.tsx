@@ -25,6 +25,7 @@ import {
 import { useAuth } from "@/utils/auth";
 import { transferFunds, getBalance } from "@/utils/api";
 import { TransferDetails } from "@/types";
+import { ApiError } from "@/types/error";
 
 export default function Transfer() {
   const [balance, setBalance] = useState<number>(0);
@@ -38,7 +39,7 @@ export default function Transfer() {
 
   const router = useRouter();
   const { toast } = useToast();
-  const { getAuthToken } = useAuth();
+  const {} = useAuth();
 
   useEffect(() => {
     const fetchBalance = async () => {
@@ -56,7 +57,7 @@ export default function Transfer() {
     };
 
     fetchBalance();
-  }, [toast]);
+  }, [toast, getBalance]);
 
   const handleInitiateTransfer = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -125,12 +126,14 @@ export default function Transfer() {
 
       setConfirmOpen(false);
       router.push("/");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Transfer error:", error);
 
+      const apiError = error as ApiError;
       toast({
         title: "Transfer Gagal",
-        description: error.response?.data?.error || "Gagal melakukan transfer",
+        description:
+          apiError.response?.data?.error || "Gagal melakukan transfer",
         variant: "destructive",
       });
 
