@@ -14,6 +14,7 @@ export interface AuthResponse {
     id: string;
     name: string;
     email: string;
+    phoneNumber: string;
     token: string;
   };
 }
@@ -39,7 +40,7 @@ export interface TopUpResponse {
 }
 
 export interface TransferData {
-  recipientId: string;
+  recipientPhoneNumber: string;
   amount: number;
   description?: string;
 }
@@ -122,7 +123,7 @@ export interface WithdrawDetails {
 }
 
 export interface TransferDetails {
-  recipientId: string;
+  recipientPhoneNumber: string;
   amount: number;
   fee: number;
   total: number;

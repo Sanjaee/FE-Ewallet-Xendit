@@ -23,6 +23,7 @@ import {
   Info,
   DollarSign,
   ArrowRight,
+  Gift,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -58,6 +59,10 @@ interface TopUpResponse {
     checkoutUrl?: string;
     isRedirectRequired: boolean;
     qrString?: string;
+    amount: number;
+    fee: number;
+    totalAmount: number;
+    message?: string;
   };
   error?: string;
 }
@@ -85,13 +90,10 @@ const PRESET_AMOUNTS: number[] = [50000, 100000, 200000, 500000, 1000000];
 const MIN_TOPUP_AMOUNT = 10000;
 const MAX_TOPUP_AMOUNT = 10000000;
 
-// Fee calculation function (matches backend)
+// PERBAIKAN: Fee calculation function - NO FEE for topup
 const calculateTransactionFee = (amount: number): number => {
-  const STANDARD_FEE = 2500;
-  const HIGH_AMOUNT_THRESHOLD = 250000000; // 250 million
-  const HIGH_AMOUNT_FEE = 50000;
-
-  return amount >= HIGH_AMOUNT_THRESHOLD ? HIGH_AMOUNT_FEE : STANDARD_FEE;
+  // TOPUP GRATIS - tidak ada biaya tambahan
+  return 0;
 };
 
 const PAYMENT_METHODS: PaymentMethod[] = [
@@ -121,21 +123,19 @@ const PAYMENT_METHODS: PaymentMethod[] = [
   },
 ];
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 // ===========================================
 // MAIN COMPONENT
 // ===========================================
 
-export default function TopUpWithFixedFee() {
+export default function TopUpNoFee() {
   // State Management
   const [selectedAmount, setSelectedAmount] = useState<string>("");
   const [customAmount, setCustomAmount] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [currentBalance, setCurrentBalance] = useState<number>(0);
-  const [feeCalculation, setFeeCalculation] = useState<FeeCalculation | null>(
-    null
-  );
+  const [feeCalculation, setFeeCalculation] = useState<FeeCalculation | null>(null);
 
   // Loading States
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -163,7 +163,7 @@ export default function TopUpWithFixedFee() {
     fetchCurrentBalance();
   }, []);
 
-  // Calculate fee when amount changes
+  // Calculate fee when amount changes (now always 0)
   useEffect(() => {
     const amount = getFinalAmount();
     if (amount > 0) {
@@ -225,58 +225,38 @@ export default function TopUpWithFixedFee() {
   };
 
   // ===========================================
-  // FEE CALCULATION
+  // FEE CALCULATION (NOW ALWAYS 0)
   // ===========================================
 
   const calculateFeeForAmount = async (amount: number): Promise<void> => {
     try {
       setIsCalculatingFee(true);
 
-      // Use local calculation for immediate feedback
-      const fee = calculateTransactionFee(amount);
-      const total = amount + fee;
+      // PERBAIKAN: No fee calculation - always 0
+      const fee = 0; // Always free
+      const total = amount; // No additional cost
 
       setFeeCalculation({
         amount,
         fee,
         total,
-        feeType:
-          amount >= 250000000
-            ? "High Amount Fee (Rp 50,000)"
-            : "Standard Fee (Rp 2,500)",
+        feeType: "Gratis - Tanpa Biaya Tambahan",
         breakdown: {
           originalAmount: amount,
-          transactionFee: fee,
-          totalRequired: total,
+          transactionFee: 0,
+          totalRequired: amount,
         },
       });
 
-      // Optional: Verify with server for additional security
-      const response = await fetch(`${API_BASE_URL}/api/wallet/calculate-fee`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getAuthToken()}`,
-        },
-        body: JSON.stringify({
-          amount,
-          transactionType: "TOPUP",
-        }),
+      console.log("💰 Fee calculation (FREE):", {
+        amount,
+        fee: 0,
+        total: amount,
+        message: "Top up gratis tanpa biaya"
       });
 
-      if (response.ok) {
-        const serverFeeData = await response.json();
-        if (serverFeeData.success) {
-          // Verify local calculation matches server
-          if (serverFeeData.data.fee !== fee) {
-            console.warn("Fee calculation mismatch detected!");
-            setFeeCalculation(serverFeeData.data);
-          }
-        }
-      }
     } catch (error) {
       console.error("Fee calculation error:", error);
-      // Keep local calculation as fallback
     } finally {
       setIsCalculatingFee(false);
     }
@@ -329,6 +309,8 @@ export default function TopUpWithFixedFee() {
     amount: number,
     method: string
   ): Promise<TopUpResponse> => {
+    console.log("🚀 Creating topup request (NO FEE):", { amount, method });
+    
     const response = await fetch(`${API_BASE_URL}/api/wallet/topup`, {
       method: "POST",
       headers: {
@@ -336,7 +318,7 @@ export default function TopUpWithFixedFee() {
         Authorization: `Bearer ${getAuthToken()}`,
       },
       body: JSON.stringify({
-        amount,
+        amount, // Exact amount, no additional fee
         paymentMethod: method,
       }),
     });
@@ -444,7 +426,6 @@ export default function TopUpWithFixedFee() {
             if (attemptNumber < MAX_ATTEMPTS - 1) {
               setTimeout(() => {
                 if (isPolling) {
-                  // Check if still polling (component not unmounted)
                   pollStatus(attemptNumber + 1);
                 }
               }, POLLING_INTERVAL);
@@ -574,31 +555,22 @@ export default function TopUpWithFixedFee() {
       return;
     }
 
-    // Validate user has sufficient balance for fee (if applicable)
-    if (feeCalculation && currentBalance < feeCalculation.fee) {
-      toast({
-        title: "Saldo Tidak Cukup",
-        description: `Anda memerlukan minimal ${formatCurrency(
-          feeCalculation.fee
-        )} untuk biaya transaksi`,
-        variant: "destructive",
-      });
-      return;
-    }
+    // PERBAIKAN: Hapus validasi fee karena tidak ada biaya
+    // No need to check balance for fee since topup is free
 
     setIsSubmitting(true);
     setPaymentStatus("processing");
 
     try {
-      console.log("🚀 Submitting topup request:", {
+      console.log("🚀 Submitting topup request (NO FEE):", {
         amount,
         paymentMethod,
         selectedMethod: selectedMethod.name,
-        feeCalculation,
+        feeCalculation: { ...feeCalculation, fee: 0 },
       });
 
       const response = await createTopUpRequest(amount, paymentMethod);
-      console.log("📝 TopUp response:", response);
+      console.log("📝 TopUp response (NO FEE):", response);
 
       if (!response.success || !response.data) {
         throw new Error(response.error || "Respons server tidak valid");
@@ -612,7 +584,7 @@ export default function TopUpWithFixedFee() {
 
         toast({
           title: "Mengarahkan ke Gateway Pembayaran",
-          description: `Anda akan diarahkan ke aplikasi ${selectedMethod.name} untuk menyelesaikan pembayaran`,
+          description: `Anda akan diarahkan ke aplikasi ${selectedMethod.name} untuk menyelesaikan pembayaran GRATIS (tanpa biaya tambahan)`,
         });
 
         // Start polling before redirect
@@ -632,12 +604,12 @@ export default function TopUpWithFixedFee() {
       if (data.qrString) {
         toast({
           title: "Scan QR Code",
-          description: `Buka aplikasi ${selectedMethod.name} dan scan QR code untuk menyelesaikan pembayaran`,
+          description: `Buka aplikasi ${selectedMethod.name} dan scan QR code untuk menyelesaikan pembayaran GRATIS`,
         });
       } else {
         toast({
           title: "Top Up Dimulai",
-          description: `Silakan buka aplikasi ${selectedMethod.name} untuk menyelesaikan pembayaran`,
+          description: `Silakan buka aplikasi ${selectedMethod.name} untuk menyelesaikan pembayaran GRATIS (${formatCurrency(amount)})`,
         });
       }
 
@@ -678,6 +650,7 @@ export default function TopUpWithFixedFee() {
     <Card className="mb-6">
       <CardHeader className="pb-1">
         <CardTitle className="text-lg flex items-center gap-2">
+          <DollarSign className="h-5 w-5" />
           Saldo Saat Ini
         </CardTitle>
       </CardHeader>
@@ -711,10 +684,13 @@ export default function TopUpWithFixedFee() {
   const renderAmountSelection = () => (
     <Card className="mb-6">
       <CardHeader>
-        <CardTitle>Pilih Jumlah Top Up</CardTitle>
-        <CardDescription>
+        <CardTitle className="flex items-center gap-2">
+          <Gift className="h-5 w-5" />
+          Pilih Jumlah Top Up
+        </CardTitle>
+        <CardDescription className="text-green-600 font-medium">
           Minimum {formatCurrency(MIN_TOPUP_AMOUNT)} - Maximum{" "}
-          {formatCurrency(MAX_TOPUP_AMOUNT)}
+          {formatCurrency(MAX_TOPUP_AMOUNT)} • 🎉 GRATIS tanpa biaya tambahan!
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -728,9 +704,10 @@ export default function TopUpWithFixedFee() {
                 />
                 <Label
                   htmlFor={`amount-${amount}`}
-                  className="cursor-pointer flex-1 p-3 border rounded-lg hover:bg-gray-50"
+                  className="cursor-pointer flex-1 p-3 border rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  {formatCurrency(amount)}
+                  <div className="font-medium">{formatCurrency(amount)}</div>
+                  <div className="text-xs text-green-600">Gratis</div>
                 </Label>
               </div>
             ))}
@@ -739,7 +716,7 @@ export default function TopUpWithFixedFee() {
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="custom" id="amount-custom" />
             <Label htmlFor="amount-custom" className="cursor-pointer">
-              Jumlah Lain
+              Jumlah Lain (Tetap Gratis)
             </Label>
           </div>
 
@@ -752,9 +729,16 @@ export default function TopUpWithFixedFee() {
                 onChange={handleCustomAmountChange}
                 className="text-lg"
               />
-              <p className="text-sm text-gray-600 mt-1">
-                {customAmount && formatCurrency(parseAmount(customAmount))}
-              </p>
+              {customAmount && (
+                <div className="mt-2">
+                  <p className="text-lg font-medium text-gray-900">
+                    {formatCurrency(parseAmount(customAmount))}
+                  </p>
+                  <p className="text-sm text-green-600">
+                    ✨ tanpa biaya tambahan
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </RadioGroup>
@@ -762,46 +746,47 @@ export default function TopUpWithFixedFee() {
     </Card>
   );
 
+  // PERBAIKAN: renderFeeCalculation untuk menampilkan "GRATIS"
   const renderFeeCalculation = () => {
     if (!feeCalculation) return null;
 
     return (
-      <Card className="mb-6">
+      <Card className="mb-6 border-green-200 bg-green-50">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calculator className="h-5 w-5" />
-            Rincian Biaya
+          <CardTitle className="flex items-center gap-2 text-green-700">
+            <Gift className="h-5 w-5" />
+            Rincian Pembayaran
             {isCalculatingFee && <Loader2 className="h-4 w-4 animate-spin" />}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span>Jumlah Top Up:</span>
-              <span className="font-medium">
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-700">Jumlah Top Up:</span>
+              <span className="font-medium text-lg">
                 {formatCurrency(feeCalculation.amount)}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span>Biaya Transaksi:</span>
-              <span className="font-medium">
-                {formatCurrency(feeCalculation.fee)}
+            <div className="flex justify-between items-center">
+              <span className="text-gray-700">Biaya Transaksi:</span>
+              <span className="font-bold text-green-600 text-lg">
+                GRATIS! 🎉
               </span>
             </div>
-            <hr />
-            <div className="flex justify-between text-lg font-bold">
-              <span>Total yang Diperlukan:</span>
-              <span>{formatCurrency(feeCalculation.total)}</span>
+            <hr className="border-green-200" />
+            <div className="flex justify-between items-center text-xl font-bold">
+              <span className="text-gray-900">Total Pembayaran:</span>
+              <span className="text-green-600">
+                {formatCurrency(feeCalculation.amount)}
+              </span>
             </div>
           </div>
 
-          <Alert className="mt-4">
-            <Info className="h-4 w-4" />
-            <AlertDescription>
-              {feeCalculation.feeType} -{" "}
-              {feeCalculation.feeType.includes("High")
-                ? "Berlaku untuk top up di atas Rp 250.000.000"
-                : "Biaya standar untuk semua transaksi"}
+          <Alert className="mt-4 bg-green-100 border-green-300">
+            <Gift className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-800">
+              🎉 <strong>Top up GRATIS tanpa biaya tambahan!</strong> Yang Anda bayar = Yang Anda terima di saldo.
+              Tidak ada potongan atau biaya tersembunyi.
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -814,7 +799,7 @@ export default function TopUpWithFixedFee() {
       <CardHeader>
         <CardTitle>Pilih Metode Pembayaran</CardTitle>
         <CardDescription>
-          Pilih salah satu metode pembayaran yang tersedia
+          Pilih salah satu metode pembayaran yang tersedia • Semua gratis tanpa biaya
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -828,13 +813,16 @@ export default function TopUpWithFixedFee() {
                 <RadioGroupItem value={method.id} id={`payment-${method.id}`} />
                 <Label
                   htmlFor={`payment-${method.id}`}
-                  className="cursor-pointer flex-1 p-4 border rounded-lg hover:bg-gray-50"
+                  className="cursor-pointer flex-1 p-4 border rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex justify-between items-center">
                     <div>
                       <div className="font-medium">{method.name}</div>
                       <div className="text-sm text-gray-600">
                         {method.description}
+                      </div>
+                      <div className="text-xs text-green-600 mt-1">
+                        ✨ Gratis tanpa biaya
                       </div>
                     </div>
                     {method.requiresRedirect && (
@@ -857,19 +845,19 @@ export default function TopUpWithFixedFee() {
       processing: {
         icon: <Loader2 className="h-6 w-6 animate-spin text-blue-600" />,
         title: "Memproses Pembayaran...",
-        description: "Sedang menginisialisasi pembayaran",
+        description: "Sedang menginisialisasi pembayaran gratis",
         variant: "default" as const,
       },
       waiting: {
         icon: <Clock className="h-6 w-6 text-orange-600" />,
         title: "Menunggu Pembayaran",
-        description: `Menunggu konfirmasi pembayaran... (${pollingAttempts}/36)`,
+        description: `Menunggu konfirmasi pembayaran gratis... (${pollingAttempts}/36)`,
         variant: "default" as const,
       },
       success: {
         icon: <CheckCircle2 className="h-6 w-6 text-green-600" />,
-        title: "Pembayaran Berhasil!",
-        description: "Top up telah berhasil diproses",
+        title: "Pembayaran Berhasil! 🎉",
+        description: "Top up gratis telah berhasil diproses",
         variant: "default" as const,
       },
       failed: {
@@ -922,8 +910,12 @@ export default function TopUpWithFixedFee() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Top Up Saldo</h1>
+      <div className="mb-8 text-center">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Top Up Saldo</h1>
+        <div className="inline-flex items-center gap-2 bg-green-100 text-green-800 px-4 py-2 rounded-full">
+          <Gift className="h-4 w-4" />
+          <span className="font-medium">100% GRATIS - Tanpa Biaya Tambahan!</span>
+        </div>
         <p className="text-gray-600 mt-2">
           Isi saldo Anda dengan mudah menggunakan e-wallet favorit
         </p>
@@ -941,7 +933,7 @@ export default function TopUpWithFixedFee() {
           <CardFooter className="pt-6">
             <Button
               type="submit"
-              className="w-full"
+              className="w-full bg-green-600 hover:bg-green-700"
               size="lg"
               disabled={!canSubmit()}
             >
@@ -952,7 +944,8 @@ export default function TopUpWithFixedFee() {
                 </>
               ) : (
                 <>
-                  Lanjutkan Pembayaran
+                  <Gift className="h-4 w-4 mr-2" />
+                  Lanjutkan Pembayaran GRATIS
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </>
               )}
@@ -968,6 +961,25 @@ export default function TopUpWithFixedFee() {
           </Button>
         </div>
       )}
+
+      {/* Info Panel */}
+      <Card className="mt-6 bg-blue-50 border-blue-200">
+        <CardContent className="pt-6">
+          <div className="flex items-start gap-3">
+            <Info className="h-5 w-5 text-blue-600 mt-0.5" />
+            <div className="text-sm text-blue-800">
+              <h4 className="font-medium mb-2">Informasi Penting:</h4>
+              <ul className="space-y-1 text-xs">
+                <li>✅ Top up 100% GRATIS tanpa biaya tambahan apapun</li>
+                <li>✅ Yang Anda bayar = Yang Anda terima di saldo</li>
+                <li>✅ Tidak ada biaya tersembunyi atau potongan</li>
+                <li>✅ Proses otomatis dan langsung masuk ke saldo Anda</li>
+                <li>⚡ Pembayaran akan diproses melalui gateway Xendit yang aman</li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

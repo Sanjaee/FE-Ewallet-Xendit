@@ -42,6 +42,7 @@ export default function Login() {
           id: response.data.id,
           name: response.data.name,
           email: response.data.email,
+          phoneNumber: response.data.phoneNumber,
         });
         
         toast({
