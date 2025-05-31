@@ -142,7 +142,7 @@ export default function ResetPasswordPage() {
               />
             </div>
           </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
+          <CardFooter className="flex flex-col space-y-4 mt-8">
             <Button type="submit" className="w-full" disabled={loading || formData.otp.length !== 6}>
               {loading ? 'Resetting Password...' : 'Reset Password'}
             </Button>
