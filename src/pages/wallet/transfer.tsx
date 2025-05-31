@@ -41,6 +41,11 @@ export default function Transfer() {
   const { toast } = useToast();
   const {} = useAuth();
 
+  // Function to calculate fee based on amount
+  const calculateFee = (amount: number): number => {
+    return amount > 250000000 ? 10000 : 2500;
+  };
+
   useEffect(() => {
     const fetchBalance = async () => {
       try {
@@ -82,7 +87,7 @@ export default function Transfer() {
       return;
     }
 
-    const fee = amountValue * 0.01;
+    const fee = calculateFee(amountValue);
     const totalAmount = amountValue + fee;
 
     if (totalAmount > balance) {
@@ -191,7 +196,8 @@ export default function Transfer() {
                 required
               />
               <p className="text-xs text-muted-foreground">
-                Biaya administrasi 1% dari jumlah transfer
+                Biaya administrasi Rp 2.500 (Rp 10.000 untuk transfer diatas Rp
+                250 juta)
               </p>
             </div>
 
@@ -238,7 +244,7 @@ export default function Transfer() {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Biaya (1%):</span>
+                <span className="text-muted-foreground">Biaya Admin:</span>
                 <span className="font-medium">
                   Rp {transferDetails.fee.toLocaleString()}
                 </span>
