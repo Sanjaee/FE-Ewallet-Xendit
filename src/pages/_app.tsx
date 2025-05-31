@@ -1,11 +1,11 @@
 // pages/_app.tsx
-import { useState, useEffect } from 'react';
-import { ThemeProvider } from 'next-themes';
-import { Toaster } from '@/components/ui/toaster';
-import { useRouter } from 'next/router';
-import { getAuthToken } from '@/utils/auth';
-import { AppProps } from 'next/app';
-import '../styles/globals.css';
+import { useState, useEffect } from "react";
+import { ThemeProvider } from "next-themes";
+import { Toaster } from "@/components/ui/toaster";
+import { useRouter } from "next/router";
+import { getAuthToken } from "@/utils/auth";
+import { AppProps } from "next/app";
+import "../styles/globals.css";
 
 interface MyAppProps extends AppProps {
   Component: React.ComponentType<{
@@ -23,10 +23,10 @@ function MyApp({ Component, pageProps }: MyAppProps) {
   }, []);
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+    <>
       <Component {...pageProps} isAuthenticated={isAuthenticated} />
       <Toaster />
-    </ThemeProvider>
+    </>
   );
 }
 

@@ -10,56 +10,58 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth, getUserData, removeAuthToken } from "@/utils/auth";
-import { getBalance, getTransactions } from "@/utils/api";
-import { Transaction, User } from "@/types"; // Asumsikan User type juga ada di @/types
-import { FiCopy } from "react-icons/fi";
+import { getBalance, getTransactions } from "@/utils/api"; // Asumsikan getTransactions(page, limit)
+import { Transaction, User } from "@/types";
+import { FiCopy, FiSmartphone } from "react-icons/fi";
+import { IoLogoAndroid, IoLogoApple } from "react-icons/io5";
 
-// Interface HomeProps tidak lagi diperlukan jika tidak ada props khusus server-side
-// interface HomeProps {
-//   isAuthenticated?: boolean;
-// }
+const RECENT_TRANSACTIONS_COUNT = 3;
+const VIEW_ALL_TRANSACTIONS_COUNT = 20; // Jumlah transaksi yang ditampilkan saat "View All"
 
-export default function HomePage() { // Mengganti nama 'Home' menjadi 'HomePage' untuk kejelasan
-  const [balance, setBalance] = useState<number | null>(null); // Ubah ke null untuk loading state
-  const [transactions, setTransactions] = useState<Transaction[] | null>(null); // Ubah ke null
-  const [userData, setUserDataState] = useState<Partial<User> | null>(null); // State untuk user data
+export default function HomePage() {
+  const [balance, setBalance] = useState<number | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[] | null>(null);
+  const [userData, setUserDataState] = useState<Partial<User> | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isShowingAll, setIsShowingAll] = useState<boolean>(false); // State baru
   const router = useRouter();
   const { toast } = useToast();
-  const { getAuthToken } = useAuth(); // useAuth akan menangani redirect jika tidak terotentikasi
+  const { getAuthToken } = useAuth();
 
   useEffect(() => {
     const token = getAuthToken();
     if (!token) {
-      // useAuth hook seharusnya sudah menangani ini, tapi sebagai fallback
       router.push("/auth/login");
       return;
     }
 
-    const currentUserData = getUserData(); // Ambil data user dari localStorage
+    const currentUserData = getUserData();
     setUserDataState(currentUserData);
 
-    const fetchData = async () => {
-      setLoading(true); // Pastikan loading true di awal fetch
+    const initialFetchData = async () => {
+      setLoading(true);
       try {
-        const [balanceResponse, transactionsResponse] = await Promise.all([
-          getBalance(),
-          getTransactions(1, 3), // Mengambil 3 transaksi terbaru untuk demo skeleton
-        ]);
-
+        const balanceResponse = await getBalance();
         setBalance(balanceResponse.data.balance);
+
+        // Fetch initial recent transactions
+        const transactionsResponse = await getTransactions(
+          1,
+          RECENT_TRANSACTIONS_COUNT
+        );
         setTransactions(transactionsResponse.data.transactions || []);
+        setIsShowingAll(false); // Pastikan kembali ke tampilan ringkasan saat data awal dimuat
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error fetching initial data:", error);
         toast({
           title: "Error",
-          description: "Failed to fetch wallet data. Please try again later.",
+          description:
+            "Failed to fetch initial wallet data. Please try again later.",
           variant: "destructive",
         });
-        // Jika error, set data ke nilai default agar tidak null terus
         setBalance(0);
         setTransactions([]);
       } finally {
@@ -67,14 +69,42 @@ export default function HomePage() { // Mengganti nama 'Home' menjadi 'HomePage'
       }
     };
 
-    fetchData();
-  }, [router, toast, getAuthToken]); // getAuthToken sebagai dependency
+    initialFetchData();
+  }, [router, toast, getAuthToken]); // getAuthToken mungkin tidak diperlukan jika hanya untuk inisialisasi
 
+  const handleFetchTransactions = async (showAll: boolean) => {
+    setLoading(true); // Gunakan loading state utama untuk indikasi
+    try {
+      const limit = showAll
+        ? VIEW_ALL_TRANSACTIONS_COUNT
+        : RECENT_TRANSACTIONS_COUNT;
+      const response = await getTransactions(1, limit); // Ambil halaman pertama dengan limit yang sesuai
+      setTransactions(response.data.transactions || []);
+      setIsShowingAll(showAll);
+    } catch (error) {
+      console.error(
+        `Error fetching ${showAll ? "all" : "recent"} transactions:`,
+        error
+      );
+      toast({
+        title: "Error",
+        description: `Failed to fetch ${
+          showAll ? "all" : "recent"
+        } transactions.`,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     removeAuthToken();
     localStorage.removeItem("user");
-    toast({title: "Logged Out", description: "You have been successfully logged out."});
+    toast({
+      title: "Logged Out",
+      description: "You have been successfully logged out.",
+    });
     router.push("/auth/login");
   };
 
@@ -85,7 +115,9 @@ export default function HomePage() { // Mengganti nama 'Home' menjadi 'HomePage'
       WITHDRAW: "Withdrawal",
       FEE: "Fee",
     };
-    return types[type] || type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
+    return (
+      types[type] || type.charAt(0).toUpperCase() + type.slice(1).toLowerCase()
+    );
   };
 
   const copyPhoneNumber = () => {
@@ -98,74 +130,160 @@ export default function HomePage() { // Mengganti nama 'Home' menjadi 'HomePage'
     }
   };
 
-  // Komponen Skeleton untuk Welcome Card
   const WelcomeCardSkeleton = () => (
     <Card className="mb-6">
       <CardHeader>
-        <Skeleton className="h-8 w-3/4 mb-2" /> {/* Skeleton untuk CardTitle */}
-        <Skeleton className="h-6 w-full" /> {/* Skeleton untuk CardDescription */}
+        <Skeleton className="h-8 w-3/4 mb-2" />
+        <Skeleton className="h-6 w-full" />
       </CardHeader>
       <CardContent>
         <div className="bg-primary/10 p-6 rounded-lg">
-          <Skeleton className="h-4 w-1/4 mb-2" /> {/* Skeleton untuk "Current Balance" */}
-          <Skeleton className="h-10 w-1/2" /> {/* Skeleton untuk jumlah balance */}
+          <Skeleton className="h-4 w-1/4 mb-2" />
+          <Skeleton className="h-10 w-1/2" />
         </div>
       </CardContent>
       <CardFooter className="flex justify-between">
-        <Skeleton className="h-10 w-24" /> {/* Skeleton untuk tombol */}
+        <Skeleton className="h-10 w-24" />
         <Skeleton className="h-10 w-24" />
         <Skeleton className="h-10 w-24" />
       </CardFooter>
     </Card>
   );
 
-  // Komponen Skeleton untuk Recent Transactions
+  const DownloadAppCard = () => {
+    const handleDownloadAndroid = () => {
+      toast({
+        title: "Download Android App",
+        description: "Android app download will start shortly. (Placeholder)",
+      });
+      window.open(
+        "https://drive.google.com/file/d/1gk5ffm6brjlU-WJpXvh8XNncosZx2cOS/view?usp=drive_link",
+        "_blank"
+      );
+    };
+
+    const handleDownloadIOS = () => {
+      toast({
+        title: "Download iOS App",
+        description: "iOS app download will start shortly. (Placeholder)",
+      });
+      window.open(
+        "https://drive.google.com/file/d/1gk5ffm6brjlU-WJpXvh8XNncosZx2cOS/view?usp=drive_link",
+        "_blank"
+      );
+    };
+
+    return (
+      <Card className="mb-6">
+        <CardHeader>
+          <div className="flex items-center space-x-2">
+            <FiSmartphone className="h-6 w-6 text-primary" />
+            <CardTitle>Get Our Mobile App</CardTitle>
+          </div>
+          <CardDescription>
+            Access your e-wallet anytime, anywhere. Download the app for a
+            seamless mobile experience.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          <Button
+            variant="outline"
+            className="w-full flex items-center justify-center"
+            onClick={handleDownloadAndroid}
+          >
+            <IoLogoAndroid className="mr-2 h-5 w-5" />
+            Download for Android
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full flex items-center justify-center"
+            onClick={handleDownloadIOS}
+          >
+            <IoLogoApple className="mr-2 h-5 w-5" />
+            Download for iOS
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const DownloadAppCardSkeleton = () => (
+    <Card className="mb-6">
+      <CardHeader>
+        <div className="flex items-center space-x-2 mb-2">
+          <Skeleton className="h-6 w-6 rounded-full" />
+          <Skeleton className="h-7 w-2/5" />
+        </div>
+        <Skeleton className="h-5 w-full" />
+        <Skeleton className="h-5 w-4/5 mt-1" />
+      </CardHeader>
+      <CardContent className="grid gap-4 sm:grid-cols-2">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </CardContent>
+    </Card>
+  );
+
   const TransactionsCardSkeleton = () => (
+    // Skeleton ini akan tetap menampilkan 3 item karena ini untuk loading awal page
     <Card>
       <CardHeader>
-        <Skeleton className="h-7 w-1/2 mb-2" /> {/* Skeleton untuk CardTitle */}
-        <Skeleton className="h-5 w-3/4" /> {/* Skeleton untuk CardDescription */}
+        <Skeleton className="h-7 w-1/2 mb-2" />
+        <Skeleton className="h-5 w-3/4" />
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {[...Array(3)].map((_, index) => ( // Membuat 3 item skeleton transaksi
-            <div key={index} className="flex justify-between items-center border-b pb-2">
-              <div className="space-y-1">
-                <Skeleton className="h-5 w-24" /> {/* Skeleton untuk tipe transaksi */}
-                <Skeleton className="h-4 w-32" /> {/* Skeleton untuk tanggal */}
+          {[...Array(RECENT_TRANSACTIONS_COUNT)].map(
+            (
+              _,
+              index // Sesuaikan dengan jumlah awal
+            ) => (
+              <div
+                key={index}
+                className="flex justify-between items-center border-b pb-2"
+              >
+                <div className="space-y-1">
+                  <Skeleton className="h-5 w-24" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+                <Skeleton className="h-6 w-20" />
               </div>
-              <Skeleton className="h-6 w-20" /> {/* Skeleton untuk jumlah transaksi */}
-            </div>
-          ))}
+            )
+          )}
         </div>
       </CardContent>
       <CardFooter>
-        <Skeleton className="h-10 w-full" /> {/* Skeleton untuk tombol View All */}
+        <Skeleton className="h-10 w-full" />
       </CardFooter>
     </Card>
   );
-
 
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="flex justify-between items-center mb-8">
-        {loading ? (
-            <Skeleton className="h-9 w-1/2" />
+        {loading && !transactions ? ( // Hanya tampilkan skeleton judul jika data utama belum ada
+          <Skeleton className="h-9 w-1/2" />
         ) : (
-            <h1 className="text-3xl font-bold">E-Wallet Dashboard</h1>
+          <h1 className="text-3xl font-bold">E-Wallet Dashboard</h1>
         )}
-        <Button variant="outline" onClick={handleLogout} disabled={loading}>
+        <Button
+          variant="outline"
+          onClick={handleLogout}
+          disabled={loading && !transactions}
+        >
           Logout
         </Button>
       </div>
 
-      {loading ? (
+      {loading && !transactions ? ( // Skeleton utama hanya saat data awal belum ada
         <>
           <WelcomeCardSkeleton />
+          <DownloadAppCardSkeleton />
           <TransactionsCardSkeleton />
         </>
       ) : (
         <>
+          {/* Welcome Card */}
           <Card className="mb-6">
             <CardHeader>
               <CardTitle>Welcome, {userData?.name || "User"}</CardTitle>
@@ -178,7 +296,7 @@ export default function HomePage() { // Mengganti nama 'Home' menjadi 'HomePage'
                     title="Click to copy phone number"
                     role="button"
                     tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && copyPhoneNumber()}
+                    onKeyDown={(e) => e.key === "Enter" && copyPhoneNumber()}
                   >
                     <span className="text-primary font-semibold bg-primary/10 px-2 py-0.5 rounded break-all group-hover:bg-primary/20 transition-colors">
                       {userData.phoneNumber}
@@ -197,27 +315,49 @@ export default function HomePage() { // Mengganti nama 'Home' menjadi 'HomePage'
               </div>
             </CardContent>
             <CardFooter className="flex flex-col sm:flex-row justify-between gap-2">
-              <Button className="w-full sm:w-auto" onClick={() => router.push("/wallet/topup")}>
+              <Button
+                className="w-full sm:w-auto"
+                onClick={() => router.push("/wallet/topup")}
+              >
                 Top Up
               </Button>
-              <Button className="w-full sm:w-auto" onClick={() => router.push("/wallet/transfer")}>
+              <Button
+                className="w-full sm:w-auto"
+                onClick={() => router.push("/wallet/transfer")}
+              >
                 Transfer
               </Button>
-              <Button className="w-full sm:w-auto" onClick={() => router.push("/wallet/withdraw")}>
+              <Button
+                className="w-full sm:w-auto"
+                onClick={() => router.push("/wallet/withdraw")}
+              >
                 Withdraw
               </Button>
             </CardFooter>
           </Card>
 
+          <DownloadAppCard />
+
+          {/* Recent Transactions Card */}
           <Card>
             <CardHeader>
               <CardTitle>Recent Transactions</CardTitle>
-              <CardDescription>Your latest wallet activities</CardDescription>
+              <CardDescription>
+                {isShowingAll
+                  ? `Showing last ${VIEW_ALL_TRANSACTIONS_COUNT} transactions`
+                  : `Your latest ${RECENT_TRANSACTIONS_COUNT} wallet activities`}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              {transactions === null || transactions.length === 0 ? (
+              {loading && transactions ? ( // Indikator loading inline saat memuat lebih banyak/sedikit transaksi
+                <div className="text-center py-4 text-muted-foreground">
+                  Loading transactions...
+                </div>
+              ) : transactions === null || transactions.length === 0 ? (
                 <p className="text-center py-4 text-muted-foreground">
-                  {transactions === null ? 'Loading transactions...' : 'No transactions yet'}
+                  {transactions === null
+                    ? "Loading transactions..."
+                    : "No transactions yet"}
                 </p>
               ) : (
                 <div className="space-y-4">
@@ -234,12 +374,14 @@ export default function HomePage() { // Mengganti nama 'Home' menjadi 'HomePage'
                           {new Date(transaction.createdAt).toLocaleString()}
                         </p>
                         {transaction.description && (
-                          <p className="text-xs text-gray-500 mt-0.5">{transaction.description}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {transaction.description}
+                          </p>
                         )}
                       </div>
                       <div
                         className={`font-semibold ${
-                          ["TOPUP", "TRANSFER_IN"].includes(transaction.type) // Asumsi ada TRANSFER_IN
+                          ["TOPUP", "TRANSFER_IN"].includes(transaction.type)
                             ? "text-green-600 dark:text-green-500"
                             : "text-red-600 dark:text-red-500"
                         }`}
@@ -254,13 +396,25 @@ export default function HomePage() { // Mengganti nama 'Home' menjadi 'HomePage'
               )}
             </CardContent>
             <CardFooter>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => router.push('/transactions')} // Arahkan ke halaman semua transaksi
-              >
-                View All Transactions
-              </Button>
+              {!isShowingAll ? (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => handleFetchTransactions(true)}
+                  disabled={loading}
+                >
+                  View More Transactions
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => handleFetchTransactions(false)}
+                  disabled={loading}
+                >
+                  Show Less Transactions
+                </Button>
+              )}
             </CardFooter>
           </Card>
         </>
