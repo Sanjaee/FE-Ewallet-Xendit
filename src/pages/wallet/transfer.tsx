@@ -100,6 +100,7 @@ export default function Transfer() {
       fee,
       total: totalAmount,
       description: description || "Transfer ke pengguna",
+      recipientName: "", // Set as empty string initially
     });
 
     setConfirmOpen(true);

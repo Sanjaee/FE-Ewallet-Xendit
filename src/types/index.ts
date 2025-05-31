@@ -17,6 +17,12 @@ export interface VerifyOtpData {
   otp: string;
 }
 
+export interface TransferData {
+  recipientPhoneNumber: string;
+  amount: number;
+  description?: string; // Deskripsi opsional untuk transfer
+}
+
 export interface ResendOtpData {
   email: string;
   type?: "VERIFICATION" | "PASSWORD_RESET"; // Sesuai backend
@@ -84,6 +90,16 @@ export interface BalanceResponse {
   data: { balance: number; cached_at: string };
 }
 
+export interface TransferDetails {
+  amount: number;
+  fee: number;
+  total: number;
+  recipientName: string;
+  recipientPhoneNumber: string;
+}
+
+
+
 export interface TopUpData {
   amount: number;
   paymentMethod: string;
@@ -103,10 +119,12 @@ export interface TopUpResponse {
   details?: string;
 }
 
-export interface TransferData {
+export interface TransferDetails {
   recipientPhoneNumber: string;
   amount: number;
-  description?: string;
+  fee: number;
+  total: number;
+  description: string;
 }
 
 export interface TransferResponse {

@@ -80,7 +80,8 @@ api.interceptors.request.use(
 
 export const register = async (
   userData: RegisterData // Tipe dari @/types
-): Promise<AuthResponse> => { // Tipe dari @/types
+): Promise<AuthResponse> => {
+  // Tipe dari @/types
   const response = await api.post<AuthResponse>(
     "/api/users/register",
     userData
@@ -98,7 +99,8 @@ export const login = async (credentials: LoginData): Promise<AuthResponse> => {
 
 export const verifyOtp = async (
   otpData: VerifyOtpData // Tipe didefinisikan & diekspor di file ini
-): Promise<VerifyOtpResponse> => { // Tipe didefinisikan & diekspor di file ini
+): Promise<VerifyOtpResponse> => {
+  // Tipe didefinisikan & diekspor di file ini
   const response = await api.post<VerifyOtpResponse>(
     "/api/users/verify-otp",
     otpData
@@ -108,7 +110,8 @@ export const verifyOtp = async (
 
 export const resendOtp = async (
   resendOtpData: ResendOtpData // Tipe didefinisikan & diekspor di file ini
-): Promise<ResendOtpResponse> => { // Tipe didefinisikan & diekspor di file ini
+): Promise<ResendOtpResponse> => {
+  // Tipe didefinisikan & diekspor di file ini
   const response = await api.post<ResendOtpResponse>(
     "/api/users/resend-otp",
     resendOtpData
@@ -118,7 +121,8 @@ export const resendOtp = async (
 
 export const forgotPassword = async (
   data: ForgotPasswordData // Tipe didefinisikan & diekspor di file ini
-): Promise<GenericMessageResponse> => { // Tipe didefinisikan & diekspor di file ini
+): Promise<GenericMessageResponse> => {
+  // Tipe didefinisikan & diekspor di file ini
   const response = await api.post<GenericMessageResponse>(
     "/api/users/forgot-password",
     data
@@ -128,7 +132,8 @@ export const forgotPassword = async (
 
 export const resetPassword = async (
   data: ResetPasswordData // Tipe didefinisikan & diekspor di file ini
-): Promise<GenericMessageResponse> => { // Tipe didefinisikan & diekspor di file ini
+): Promise<GenericMessageResponse> => {
+  // Tipe didefinisikan & diekspor di file ini
   const response = await api.post<GenericMessageResponse>(
     "/api/users/reset-password",
     data
@@ -138,7 +143,8 @@ export const resetPassword = async (
 
 export const changePassword = async (
   data: ChangePasswordData // Tipe didefinisikan & diekspor di file ini
-): Promise<GenericMessageResponse> => { // Tipe didefinisikan & diekspor di file ini
+): Promise<GenericMessageResponse> => {
+  // Tipe didefinisikan & diekspor di file ini
   const response = await api.post<GenericMessageResponse>(
     "/api/users/change-password",
     data
@@ -146,14 +152,16 @@ export const changePassword = async (
   return response.data;
 };
 
-export const getBalance = async (): Promise<BalanceResponse> => { // Tipe dari @/types
+export const getBalance = async (): Promise<BalanceResponse> => {
+  // Tipe dari @/types
   const response = await api.get<BalanceResponse>("/api/users/balance");
   return response.data;
 };
 
 export const topUpWallet = async (
   topUpData: TopUpData // Tipe dari @/types
-): Promise<TopUpResponse> => { // Tipe dari @/types
+): Promise<TopUpResponse> => {
+  // Tipe dari @/types
   const response = await api.post<TopUpResponse>(
     "/api/wallet/topup",
     topUpData
@@ -163,7 +171,8 @@ export const topUpWallet = async (
 
 export const transferFunds = async (
   transferData: TransferData // Tipe dari @/types
-): Promise<TransferResponse> => { // Tipe dari @/types
+): Promise<TransferResponse> => {
+  // Tipe dari @/types
   const response = await api.post<TransferResponse>(
     "/api/wallet/transfer",
     transferData
@@ -173,7 +182,8 @@ export const transferFunds = async (
 
 export const withdrawFunds = async (
   withdrawData: WithdrawData // Tipe dari @/types
-): Promise<WithdrawResponse> => { // Tipe dari @/types
+): Promise<WithdrawResponse> => {
+  // Tipe dari @/types
   const response = await api.post<WithdrawResponse>(
     "/api/wallet/withdraw",
     withdrawData
@@ -185,7 +195,8 @@ export const getTransactions = async (
   page: number = 1,
   limit: number = 10,
   type: string | null = null
-): Promise<TransactionsResponse> => { // Tipe dari @/types
+): Promise<TransactionsResponse> => {
+  // Tipe dari @/types
   const params: Record<string, string | number | null> = { page, limit };
   if (type) params.type = type;
 
