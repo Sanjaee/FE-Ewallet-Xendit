@@ -7,6 +7,20 @@ export interface RegisterData {
   phoneNumber: string;
 }
 
+export interface WithdrawDetails {
+  amount: number;
+  fee: number;
+  actualAmount: number;
+  bankCode: string;
+  accountNumber: string;
+  accountHolderName: string;
+}
+
+export interface Bank {
+  code: string;
+  name: string;
+}
+
 export interface LoginData {
   email: string;
   password: string;
