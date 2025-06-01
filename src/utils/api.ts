@@ -47,6 +47,7 @@ export interface ResetPasswordData {
   newPassword: string;
 }
 
+
 export interface ChangePasswordData {
   oldPassword: string;
   newPassword: string;
