@@ -26,7 +26,10 @@ export default function HomePage() {
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
   const [userData, setUserDataState] = useState<Partial<User> | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [isShowingAll, setIsShowingAll] = useState<boolean>(false); // State baru
+  const [isShowingAll, setIsShowingAll] = useState<boolean>(false);
+  const [lastTransactionId, setLastTransactionId] = useState<string | null>(
+    null
+  );
   const router = useRouter();
   const { toast } = useToast();
   const { getAuthToken } = useAuth();
@@ -52,8 +55,15 @@ export default function HomePage() {
           1,
           RECENT_TRANSACTIONS_COUNT
         );
-        setTransactions(transactionsResponse.data.transactions || []);
-        setIsShowingAll(false); // Pastikan kembali ke tampilan ringkasan saat data awal dimuat
+        const newTransactions = transactionsResponse.data.transactions || [];
+        setTransactions(newTransactions);
+
+        // Set the last transaction ID for future comparisons
+        if (newTransactions.length > 0) {
+          setLastTransactionId(newTransactions[0].id);
+        }
+
+        setIsShowingAll(false);
       } catch (error) {
         console.error("Error fetching initial data:", error);
         toast({
@@ -70,7 +80,48 @@ export default function HomePage() {
     };
 
     initialFetchData();
-  }, [router, toast, getAuthToken]); // getAuthToken mungkin tidak diperlukan jika hanya untuk inisialisasi
+
+    // Set up polling for new transactions
+    const pollInterval = setInterval(async () => {
+      try {
+        const transactionsResponse = await getTransactions(
+          1,
+          RECENT_TRANSACTIONS_COUNT
+        );
+        const newTransactions = transactionsResponse.data.transactions || [];
+
+        if (
+          newTransactions.length > 0 &&
+          lastTransactionId !== newTransactions[0].id
+        ) {
+          // Check if the new transaction is an incoming transfer
+          const latestTransaction = newTransactions[0];
+          if (
+            latestTransaction.type === "TRANSFER" &&
+            latestTransaction.amount > 0
+          ) {
+            // Show popup for incoming transfer
+            toast({
+              title: "💰 New Transfer Received!",
+              description: `You received Rp ${latestTransaction.amount.toLocaleString()} from ${
+                latestTransaction.description?.replace("Transfer from ", "") ||
+                "someone"
+              }`,
+              duration: 5000,
+            });
+          }
+
+          // Update transactions and last transaction ID
+          setTransactions(newTransactions);
+          setLastTransactionId(newTransactions[0].id);
+        }
+      } catch (error) {
+        console.error("Error polling transactions:", error);
+      }
+    }, 10000); // Poll every 10 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [router, toast, getAuthToken, lastTransactionId]);
 
   const handleFetchTransactions = async (showAll: boolean) => {
     setLoading(true); // Gunakan loading state utama untuk indikasi
@@ -381,14 +432,18 @@ export default function HomePage() {
                       </div>
                       <div
                         className={`font-semibold ${
-                          ["TOPUP", "TRANSFER_IN"].includes(transaction.type)
-                            ? "text-green-600 dark:text-green-500"
-                            : "text-red-600 dark:text-red-500"
+                          transaction.type === "FEE" || transaction.amount < 0
+                            ? "text-red-600 dark:text-red-500"
+                            : "text-green-600 dark:text-green-500"
                         }`}
                       >
-                        {["TOPUP", "TRANSFER_IN"].includes(transaction.type)
-                          ? `+Rp ${transaction.amount.toLocaleString()}`
-                          : `-Rp ${transaction.amount.toLocaleString()}`}
+                        {transaction.type === "FEE" || transaction.amount < 0
+                          ? `-Rp ${Math.abs(
+                              transaction.amount
+                            ).toLocaleString()}`
+                          : `+Rp ${Math.abs(
+                              transaction.amount
+                            ).toLocaleString()}`}
                       </div>
                     </div>
                   ))}
